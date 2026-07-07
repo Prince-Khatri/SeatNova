@@ -94,4 +94,9 @@ public class ScreenService {
         response.setScreenId(seat.getScreen().getId());
         return response;
     }
+
+    public boolean validateSeat(UUID id) {
+        Seat seat = seatRepository.findById(id).orElse(null);
+        return seat != null;
+    }
 }

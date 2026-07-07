@@ -83,7 +83,11 @@ public class ShowService {
     public ShowResponse getShow(UUID id) {
         return mapToResponse(showRepository.findById(id).orElseThrow());
     }
-
+    public List<ShowResponse> getAllShows() {
+        return showRepository.findAll().stream()
+                .map(this :: mapToResponse)
+                .toList();
+    }
     private ShowResponse mapToResponse(Show show) {
         ShowResponse response = modelMapper.map(show, ShowResponse.class);
         response.setScreenId(show.getScreen().getId());

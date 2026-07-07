@@ -21,6 +21,7 @@ public class MovieValidationService {
                     .retrieve()
                     .toBodilessEntity()
                     .block();
+            System.out.println("Movie Validated");
         } catch (WebClientResponseException.NotFound exception) {
             throw new RuntimeException("Movie not found with id: " + movieId, exception);
         } catch (WebClientResponseException | WebClientRequestException exception) {

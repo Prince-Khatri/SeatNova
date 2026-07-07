@@ -50,4 +50,9 @@ public class ShowController {
         showService.cancelShow(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping
+    public ResponseEntity<List<ShowResponse>> getAllShows() {
+        return ResponseEntity.ok(showService.getAllShows());
+    }
 }

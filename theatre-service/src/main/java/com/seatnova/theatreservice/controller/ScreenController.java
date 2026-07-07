@@ -42,4 +42,9 @@ public class ScreenController {
             @RequestBody List<SeatRequest> seats) {
         return ResponseEntity.status(HttpStatus.CREATED).body(screenService.addSeats(screenId, seats));
     }
+
+    @GetMapping("/{seatId}/validate")
+    public ResponseEntity<?> validateSeat(@PathVariable UUID seatId){
+        return ResponseEntity.ok(screenService.validateSeat(seatId));
+    }
 }
