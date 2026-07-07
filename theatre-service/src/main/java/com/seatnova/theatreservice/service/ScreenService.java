@@ -95,8 +95,9 @@ public class ScreenService {
         return response;
     }
 
-    public boolean validateSeat(UUID id) {
-        Seat seat = seatRepository.findById(id).orElse(null);
-        return seat != null;
+    public boolean validateSeat(UUID seatId) {
+        boolean ans=seatRepository.existsById(seatId);
+        System.out.println("SeatId: "+seatId+" flag:"+ans);
+        return ans;
     }
 }
