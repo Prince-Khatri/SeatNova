@@ -6,6 +6,7 @@ import com.seatnova.theatreservice.entity.Screen;
 import com.seatnova.theatreservice.entity.Show;
 import com.seatnova.theatreservice.entity.ShowStatus;
 import com.seatnova.theatreservice.repository.ScreenRepository;
+import com.seatnova.theatreservice.repository.SeatRepository;
 import com.seatnova.theatreservice.repository.ShowRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -22,6 +23,7 @@ public class ShowService {
     private final ScreenRepository screenRepository;
     private final ModelMapper modelMapper;
     private final MovieValidationService movieValidationService;
+    private final SeatRepository seatRepository;
 
     @Transactional
     public ShowResponse createShow(ShowRequest request) {
@@ -86,5 +88,9 @@ public class ShowService {
         ShowResponse response = modelMapper.map(show, ShowResponse.class);
         response.setScreenId(show.getScreen().getId());
         return response;
+    }
+
+    public Boolean validateShow(UUID id) {
+        return seatRepository.existsById(id);
     }
 }
