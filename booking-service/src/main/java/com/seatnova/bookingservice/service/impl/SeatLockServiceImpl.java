@@ -5,6 +5,7 @@ import com.seatnova.bookingservice.service.SeatLockService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SeatLockServiceImpl implements SeatLockService {
     private final StringRedisTemplate redisTemplate;
+    private final RedisScript<Long> holdSeatsScript;
 
     String getKey(UUID showId, UUID  seatId){
         return showId.toString() + ":" + seatId.toString();
@@ -21,27 +23,18 @@ public class SeatLockServiceImpl implements SeatLockService {
 
     @Override
     public boolean lockSeats(UUID showId, List<UUID> seatIds) {
-        boolean flag = false;
-        for(UUID seatId:seatIds){
-            String status = redisTemplate.opsForValue().get(getKey(showId, seatId));
-            // seat exist in redis
-            if (status == null) {
-                throw new IllegalStateException(
-                        "Seat not initialized in Redis : " + seatId
-                );
-            }
-            // seat available
-            if(!status.equals("AVAILABLE")) return false;
-        }
-        for(UUID seatId:seatIds){
-            redisTemplate
-                    .opsForValue() // get opearations for key/value
-                    .getAndSet(
-                            getKey(showId, seatId), // key
-                            SeatStatus.HOLD.name() // value
-                    );
-        }
-        return true;
+        List<String> keys = seatIds
+                .stream()
+                .map((seatId)->{
+                    return getKey(showId, seatId);
+                })
+                .toList();
+
+        Long result = redisTemplate.execute(
+                holdSeatsScript,
+                keys
+        );
+        return result != null && result == 1;
     }
 
     @Override

@@ -9,6 +9,7 @@ import com.seatnova.bookingservice.entity.BookingStatus;
 import com.seatnova.bookingservice.entity.PaymentStatus;
 import com.seatnova.bookingservice.repository.BookingRepository;
 import com.seatnova.bookingservice.service.BookingService;
+import com.seatnova.bookingservice.service.SeatLockService;
 import com.seatnova.bookingservice.service.TheatreValidationService;
 import com.seatnova.bookingservice.service.UserValidationService;
 import jakarta.persistence.EntityNotFoundException;
@@ -32,7 +33,8 @@ import java.util.UUID;
 public class BookingServiceImpl implements BookingService {
 
     private final BookingRepository bookingRepository;
-    private final TheatreValidationService theatreValidationService;
+//    private final TheatreValidationService theatreValidationService;
+    private final SeatLockService seatLockService;
     @Qualifier("userDummyValidationService")
     private final UserValidationService userValidationService;
     private final RabbitTemplate rabbitTemplate;
@@ -46,25 +48,43 @@ public class BookingServiceImpl implements BookingService {
         // validate user id
         if(this.userValidationService.validateUserId(request.getUserId())==false)
             throw new EntityNotFoundException("User doesn't exist with userId: "+ request.getUserId());
-
         // validate seatId
-        Booking booking = new Booking(request);
-        booking.setBookingSeats(
+        boolean locked = seatLockService.lockSeats(
+                request.getShowId(),
                 request.getSeatIds()
-                        .stream()
-                        .map((seatId)->{
-                            if(this.theatreValidationService.validateSeatId(seatId)==false) throw new EntityNotFoundException("Seat not found, seatId: "+seatId);
-                            BookingSeat bs= new BookingSeat();
-                            bs.setBooking(booking);
-                            bs.setSeatId(seatId);
-                            return bs;
-                        })
-                        .toList()
         );
+        if(!locked) {
+            throw new IllegalStateException(
+                    "One or more seats are not available"
+            );
+        }
+        Booking booking = new Booking(request);
+
+        booking.setBookingSeats(
+            request
+                .getSeatIds()
+                .stream()
+                .map((seatId)->{
+                    BookingSeat bs = new BookingSeat();
+                    bs.setSeatId(seatId);
+                    bs.setBooking(booking);
+                    return bs;
+                })
+                .toList()
+
+        );
+
         booking.setExpiresAt(LocalDateTime.now().plusMinutes(10));
         booking.setBookingStatus(BookingStatus.HOLD);
         booking.setPaymentStatus(PaymentStatus.PENDING);
-        Booking savedBooking = this.bookingRepository.save(booking);
+
+        Booking savedBooking=null;
+        // release seats if they are not saved.
+        try{
+            savedBooking=this.bookingRepository.save(booking);
+        } catch (Exception e) {
+            seatLockService.releaseSeats(request.getShowId(),request.getSeatIds());
+        }
         try{
             Map<String, Object> payload = new HashMap<>();
             payload.put("bookingId", savedBooking.getId());
@@ -77,7 +97,7 @@ public class BookingServiceImpl implements BookingService {
             );
 
         } catch (Exception e) {
-            System.err.println("Async notification warning: Broker unreachable. " + e.getMessage());
+            log.warn("Async notification warning: Broker unreachable. " + e.getMessage());
         }
 
         return new BookingResponse(savedBooking);
@@ -109,20 +129,20 @@ public class BookingServiceImpl implements BookingService {
                     "Booking cannot be confirmed."
             );
         }
-
         booking.setBookingStatus(BookingStatus.CONFIRMED);
         booking.setPaymentStatus(PaymentStatus.SUCESSFUL);
-
+        seatLockService.confirmSeats(
+                booking.getShowId(),
+                booking.getBookingSeats()
+                    .stream()
+                    .map((bs)-> bs.getSeatId())
+                    .toList()
+        );
         return new BookingResponse(booking);
     }
     @Transactional
     @Override
     public BookingResponse releaseBooking(UUID id) {
-       return expireBooking(id);
-    }
-    @Transactional
-    @Override
-    public BookingResponse expireBooking(UUID id) {
         Booking booking = this.bookingRepository.findById(id)
                 .orElseThrow(()-> new EntityNotFoundException());
         // checking if the seat is available to release
@@ -131,12 +151,25 @@ public class BookingServiceImpl implements BookingService {
                     "Booking cannot be confirmed."
             );
         }
-
         booking.setBookingStatus(BookingStatus.EXPIRED);
         booking.setPaymentStatus(PaymentStatus.ABORTED);
 
+        seatLockService.releaseSeats(
+                booking.getShowId(),
+                booking.getBookingSeats()
+                        .stream()
+                        .map((bs)->{
+                                    return bs.getSeatId();
+                                }
+                        ).toList()
+        );
 
         return new BookingResponse(booking);
+    }
+    @Transactional
+    @Override
+    public BookingResponse expireBooking(UUID id) {
+        return releaseBooking(id);
     }
     @Transactional
     @Override
@@ -151,6 +184,14 @@ public class BookingServiceImpl implements BookingService {
             throw new IllegalStateException("Booking already Expired.");
         }
         booking.setBookingStatus(BookingStatus.CANCELLED);
+
+        seatLockService.releaseSeats(
+                booking.getShowId(),
+                booking.getBookingSeats()
+                        .stream()
+                        .map((bs)->bs.getSeatId())
+                        .toList()
+        );
 
         try{
             Map<String, Object> payload = new HashMap<>();
