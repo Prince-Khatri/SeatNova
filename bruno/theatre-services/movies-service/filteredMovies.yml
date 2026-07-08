@@ -1,0 +1,39 @@
+info:
+  name: filteredMovies
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:8081/movies?status=UPCOMING&genres=Sci
+  params:
+    - name: status
+      value: UPCOMING
+      type: query
+    - name: genres
+      value: Sci
+      type: query
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Interstellar-Upadted",
+        "description": "A team travels through a wormhole in search of a new home for humanity.",
+        "duration": 169,
+        "releaseDate": "2014-11-07",
+        "certificate": "PG_13",
+        "posterUrl": "https://example.com/interstellar.jpg",
+        "languages": [{"name":"Hindi"}],
+        "status": "UPCOMING",
+        "genres": [
+         { "name":"SCI_FI"},
+          {"name":"DRAMA"}
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

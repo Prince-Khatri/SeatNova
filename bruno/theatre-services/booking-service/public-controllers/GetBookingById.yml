@@ -1,0 +1,18 @@
+info:
+  name: GetBookingById
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: http://localhost:8082/bookings/6629911b-2dbf-4c2a-bee5-f059b024ffa3
+  body:
+    type: json
+    data: ""
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
