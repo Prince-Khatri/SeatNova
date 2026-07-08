@@ -1,0 +1,14 @@
+package com.seatnova.bookingservice.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+
+@Configuration
+public class RedisConfig {
+
+    public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory redisConnectionFactory){
+        return new StringRedisTemplate(redisConnectionFactory);
+    }
+}
