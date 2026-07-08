@@ -1,7 +1,0 @@
-info:
-  name: internal-controllers
-  type: folder
-  seq: 1
-
-request:
-  auth: inherit
