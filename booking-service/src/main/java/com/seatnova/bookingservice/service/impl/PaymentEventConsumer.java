@@ -26,6 +26,8 @@ public class PaymentEventConsumer {
             bookingService.confirmBooking(bookingId); // HOLD-> CONFIRM
         } catch (AmqpException e) {
             System.err.println("Error mapping inbound stream conversion processing: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -37,6 +39,9 @@ public class PaymentEventConsumer {
             bookingService.releaseBooking(bookingId); // HOLD-> Exipred
         } catch (AmqpException e) {
             System.err.println("Error mapping inbound stream conversion processing: " + e.getMessage());
+        }
+        catch (Exception e){
+            throw new RuntimeException(e);
         }
     }
 
